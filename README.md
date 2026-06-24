@@ -1,0 +1,2 @@
+# code-migration-agent
+An autonomous, self-correcting multi-agent system powered by **LangGraph** and **Qdrant** designed to automate complex codebase migrations. This implementation focuses on refactoring legacy, synchronous code (e.g., Flask APIs or older Python syntax) into high-performance, asynchronous architectures (e.g., FastAPI / Python 3.12+ type hints), validating execution safety via a closed-loop testing environment.
