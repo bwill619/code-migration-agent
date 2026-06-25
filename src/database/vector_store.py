@@ -2,11 +2,20 @@ import os
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 
+_IN_MEMORY = ":memory:"
+
 class MigrationVectorStore:
     def __init__(self):
-        self.url = os.getenv("QDRANT_URL", "http://localhost:6333")
+        self.url = os.getenv("QDRANT_URL", _IN_MEMORY)
         self.collection_name = os.getenv("QDRANT_COLLECTION", "migration_docs")
-        self.client = QdrantClient(url=self.url)
+
+        if self.url == _IN_MEMORY:
+            self.client = QdrantClient(location=_IN_MEMORY)
+        elif self.url.startswith("http"):
+            self.client = QdrantClient(url=self.url)
+        else:
+            self.client = QdrantClient(path=self.url)
+
 
     def init_collection(self, vector_size: int = 1536):
         """Initializes the migration database tracking collection."""
@@ -24,9 +33,9 @@ class MigrationVectorStore:
 
     def search_migration_rules(self, query_vector: list, limit: int = 2) -> list:
         """Pulls relevant FastAPI syntax payloads matching structural anti-patterns."""
-        results = self.client.search(
+        results = self.client.query_points(
             collection_name=self.collection_name,
-            query_vector=query_vector,
+            query=query_vector,
             limit=limit
         )
-        return [hit.payload.get("text", "") for hit in results if hit.payload]
+        return [point.payload.get("text", "") for point in results.points if point.payload]
