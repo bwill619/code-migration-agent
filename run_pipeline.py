@@ -22,12 +22,12 @@ def route_validation_results(state: MigrationState):
     
     if errors:
         if iterations >= 3:
-            print(f"\n🛑 [GRAPH LIMIT REACHED] Failed to self-correct after {iterations} attempts. Halting.")
+            print(f"\n [GRAPH LIMIT REACHED] Failed to self-correct after {iterations} attempts. Halting.")
             return END
-        print(f"\n🔄 [GRAPH ROUTER] Refactoring failed validation checkpoint. Routing back for Pass #{iterations + 1}.")
+        print(f"\n[GRAPH ROUTER] Refactoring failed validation checkpoint. Routing back for Pass #{iterations + 1}.")
         return "retriever_agent"
         
-    print("\n🎉 [GRAPH ROUTER] Validation completely clean. Finalizing pipeline extraction.")
+    print("\n[GRAPH ROUTER] Validation completely clean. Finalizing pipeline extraction.")
     return END
 
 def build_migration_graph():
