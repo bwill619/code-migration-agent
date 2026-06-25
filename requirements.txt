@@ -12,5 +12,8 @@ anthropic>=0.39.0
 # Environment configuration
 python-dotenv>=1.0.0
 
+# Local embeddings fallback (used when OpenAI key is unavailable)
+sentence-transformers>=3.0.0
+
 # Validation
 pytest>=8.0.0
