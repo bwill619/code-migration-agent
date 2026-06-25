@@ -1,8 +1,8 @@
 # Autonomous Code Migration & Refactoring Agent
 
-A multi-agent system for automating legacy Python codebase migrations. The target workflow uses **LangGraph** for orchestration and **Qdrant** for retrieval-augmented generation (RAG), refactoring synchronous patterns (e.g., Flask, blocking I/O) into modern async architectures (e.g., FastAPI) with a closed-loop validation step.
+A multi-agent system for automating legacy Python codebase migrations. Uses **LangGraph** for orchestration and **Qdrant** for retrieval-augmented generation (RAG), refactoring synchronous patterns (Flask, blocking I/O) into modern async architectures (FastAPI) with a closed-loop validation step.
 
-**Current focus:** Flask → FastAPI migration for single-file Python services, starting with static AST analysis before wiring LLM and vector search agents.
+**Current focus:** Flask to FastAPI migration for single-file Python services using AST analysis, vector search, and LLM-powered code generation.
 
 ---
 
@@ -12,27 +12,28 @@ A multi-agent system for automating legacy Python codebase migrations. The targe
 |-----------|--------|----------|
 | AST parser & anti-pattern detection | **Implemented** | `src/utils/ast_helpers.py`, `src/agents/parser.py` |
 | LangGraph shared state schema | **Implemented** | `src/agents/state.py` |
-| Retriever agent (Qdrant RAG) | Planned | `src/agents/retriever.py` |
-| Refactorer agent (LLM code gen) | Planned | `src/agents/refactorer.py` |
-| Validator agent (pytest loop) | Planned | `src/agents/validator.py` |
-| Vector store integration | Planned | `src/database/vector_store.py` |
-| Pipeline CLI & LangGraph graph | Planned | `run_pipeline.py` |
-| Qdrant via Docker Compose | Configured | `docker-compose.yml` |
+| Retriever agent (Qdrant RAG) | **Implemented** | `src/agents/retriever.py` |
+| Refactorer agent (LLM code gen) | **Implemented** | `src/agents/refactorer.py` |
+| Validator agent (syntax check loop) | **Implemented** | `src/agents/validator.py` |
+| Vector store integration | **Implemented** | `src/database/vector_store.py` |
+| Embedding utility (OpenAI + local fallback) | **Implemented** | `src/utils/embeddings.py` |
+| Pipeline CLI & LangGraph graph | **Implemented** | `run_pipeline.py` |
+| Knowledge base seeding script | **Implemented** | `seed_docs.py` |
 
-The parser agent is runnable today. The remaining agents, infrastructure, and end-to-end pipeline are the next milestones.
+The full pipeline is operational end-to-end.
 
 ---
 
 ## System Architecture
 
-The pipeline is designed as a cyclic state graph: failed validation feeds errors back into retrieval for self-correction.
+The pipeline is a cyclic state graph: failed validation feeds errors back into retrieval for self-correction, up to a configurable retry limit.
 
 ```mermaid
 flowchart LR
     A[Legacy Codebase] --> B[Parser Agent]
     B --> C[Retriever Agent]
     D[(Qdrant DB)] <-->|Vector Search| C
-    E[FastAPI Docs] --> D
+    E[Migration Docs] --> D
     C --> F[Refactorer Agent]
     F --> G[Validator Agent]
     G -->|Tests Passed| H[Upgraded Code]
@@ -41,10 +42,10 @@ flowchart LR
 
 ### Agent Responsibilities
 
-1. **Parser Agent** *(implemented)* — Walks the legacy source with Python's `ast` module. Detects migration-blocking patterns such as blocking `time.sleep()` calls and legacy Flask imports. Populates `MigrationState.detected_anti_patterns`.
-2. **Retriever Agent** *(planned)* — Runs semantic search against a Qdrant vector store seeded with target-framework documentation and migration guides.
-3. **Refactorer Agent** *(planned)* — Combines AST metadata and retrieved docs via LLM tool-calling to produce refactored code.
-4. **Validator Agent** *(planned)* — Writes candidate code to an isolated directory and runs **pytest**. On failure, passes stack traces back into the graph for another iteration.
+1. **Parser Agent** — Walks the legacy source with Python's `ast` module. Detects migration-blocking patterns such as blocking `time.sleep()` calls and legacy Flask imports. Populates `MigrationState.detected_anti_patterns`.
+2. **Retriever Agent** — Vectorizes each detected anti-pattern and runs semantic search against the Qdrant vector store to pull relevant migration documentation.
+3. **Refactorer Agent** — Combines AST metadata and retrieved docs into a structured prompt, then calls an LLM to produce refactored async code.
+4. **Validator Agent** — Writes the candidate code to a temp file and runs `python -m py_compile`. On failure, passes the error trace back into the graph for another refactoring attempt (max 3 iterations).
 
 ---
 
@@ -53,22 +54,25 @@ flowchart LR
 ```
 code-migration-agent/
 ├── data/
-│   └── legacy_codebase/       # Sample legacy Flask app for testing
+│   └── legacy_codebase/
+│       └── app.py                 # Sample legacy Flask app
 ├── src/
 │   ├── agents/
-│   │   ├── parser.py          # LangGraph parser node
-│   │   ├── retriever.py       # (stub)
-│   │   ├── refactorer.py      # (stub)
-│   │   ├── validator.py       # (stub)
-│   │   └── state.py           # MigrationState TypedDict
+│   │   ├── state.py               # MigrationState TypedDict
+│   │   ├── parser.py              # AST analysis node
+│   │   ├── retriever.py           # Qdrant RAG node
+│   │   ├── refactorer.py          # LLM code generation node
+│   │   └── validator.py           # Syntax validation node
 │   ├── database/
-│   │   └── vector_store.py    # (stub)
+│   │   └── vector_store.py        # Qdrant client wrapper
 │   └── utils/
-│       └── ast_helpers.py     # AST analyzer & analyze_source_code()
-├── run_pipeline.py            # (stub) CLI entry point
-├── docker-compose.yml         # Local Qdrant service
-├── .env.example               # Environment variable template
-└── requirements.txt           # Python dependencies
+│       ├── ast_helpers.py         # AST analyzer
+│       └── embeddings.py          # Embedding utility (OpenAI + local fallback)
+├── seed_docs.py                   # One-time knowledge base seeding script
+├── run_pipeline.py                # CLI entry point
+├── docker-compose.yml             # Optional: run Qdrant as a container
+├── .env.example                   # Environment variable template
+└── requirements.txt               # Python dependencies
 ```
 
 ---
@@ -77,9 +81,9 @@ code-migration-agent/
 
 ### Prerequisites
 
-- **Python 3.12+** (3.11+ minimum)
-- Docker & Docker Compose *(needed once Qdrant integration lands)*
-- OpenAI or Anthropic API key *(needed once refactorer agent lands)*
+- **Python 3.12+**
+- At least one API key: OpenAI or Anthropic (for the refactorer agent)
+- No Docker required — Qdrant runs locally via file-based storage
 
 ### 1. Clone and create a virtual environment
 
@@ -89,8 +93,6 @@ cd code-migration-agent
 python3.12 -m venv venv
 source venv/bin/activate
 ```
-
-Run each command separately. `source venv/bin/activate` is a shell command, not an argument to `python -m venv`.
 
 Verify the environment:
 
@@ -106,7 +108,7 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-This installs LangGraph, Qdrant client, LLM SDKs, pytest, and related packages for upcoming agents. The parser itself only needs the standard library, but installing deps now avoids rework as the pipeline grows.
+The first run will also download the local embedding model (~90MB) if no OpenAI key is available.
 
 ### 3. Configure environment variables
 
@@ -114,104 +116,81 @@ This installs LangGraph, Qdrant client, LLM SDKs, pytest, and related packages f
 cp .env.example .env
 ```
 
-Edit `.env` and set your API keys when you reach the refactorer agent. Qdrant defaults (`http://localhost:6333`) match the local Docker service below.
+Edit `.env` and fill in your keys:
 
 | Variable | Purpose |
 |----------|---------|
-| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | LLM access for code generation |
+| `OPENAI_API_KEY` | OpenAI key for embeddings and code generation |
+| `ANTHROPIC_API_KEY` | Anthropic key used as fallback if OpenAI is unavailable |
 | `LLM_PROVIDER` | `openai` or `anthropic` |
 | `LLM_MODEL` | Model name (e.g. `gpt-4o`) |
-| `QDRANT_URL` | Qdrant HTTP endpoint |
-| `QDRANT_COLLECTION` | Vector collection for migration docs |
-| `MAX_ITERATION_COUNT` | Validator retry limit |
+| `QDRANT_URL` | `./qdrant_storage` for local file storage, or an HTTP URL for a remote instance |
+| `QDRANT_COLLECTION` | Vector collection name (default: `migration_docs`) |
+| `MAX_ITERATION_COUNT` | Validator retry limit (default: 3) |
 
-### 4. Verify the parser (available now)
+### 4. Seed the knowledge base
 
-Compile the parser modules:
-
-```bash
-python -m py_compile src/utils/ast_helpers.py src/agents/parser.py
-```
-
-Run AST analysis against the sample legacy app:
+Run once before the pipeline. Re-run any time you want to wipe and re-index.
 
 ```bash
-PYTHONPATH=. python -c "
-from src.utils.ast_helpers import analyze_source_code
-with open('data/legacy_codebase/app.py') as f:
-    result = analyze_source_code(f.read())
-for pattern in result['anti_patterns']:
-    print(pattern)
-"
+python seed_docs.py
 ```
 
-Expected output for `data/legacy_codebase/app.py`:
+This embeds the migration rule documents into Qdrant. If OpenAI is unavailable or over quota, it automatically falls back to a local `sentence-transformers` model (`all-MiniLM-L6-v2`, 384 dims). The Qdrant collection is created with the correct vector dimensions for whichever provider is used.
 
-```
-Line 1: Legacy Flask import detected. Consider migrating to FastAPI.
-Line 8: Found blocking 'time.sleep()'. Needs migration to 'await asyncio.sleep()'.
-```
-
-Exercise the parser LangGraph node directly:
+### 5. Run the pipeline
 
 ```bash
-PYTHONPATH=. python -c "
-from src.agents.parser import parser_node
-state = {
-    'file_path': 'data/legacy_codebase/app.py',
-    'legacy_code': open('data/legacy_codebase/app.py').read(),
-    'detected_anti_patterns': [],
-    'retrieved_docs': [],
-    'refactored_code': None,
-    'validation_errors': None,
-    'iteration_count': 0,
-}
-result = parser_node(state)
-print(result['detected_anti_patterns'])
-"
+python run_pipeline.py --input data/legacy_codebase/app.py
 ```
 
-### 5. Start Qdrant (optional until retriever lands)
+The pipeline will:
+1. Parse the input file for anti-patterns
+2. Query Qdrant for relevant migration docs per pattern
+3. Call the LLM to produce refactored async code
+4. Validate the output compiles cleanly
+5. Print the migrated code (or halt with error details after 3 failed attempts)
 
-```bash
-docker compose up -d
-```
+---
 
-Qdrant will be available at `http://localhost:6333`. No API key is required for local development.
+## Embedding & LLM Fallback Behavior
 
-### 6. Run the full pipeline *(coming soon)*
+Both the embedding step (retriever) and the code generation step (refactorer) are designed to work without a specific API key being available.
 
-Once the remaining agents and LangGraph wiring are in place:
+| Step | Primary | Fallback |
+|------|---------|---------|
+| Embeddings | OpenAI `text-embedding-3-small` (1536 dims) | Local `all-MiniLM-L6-v2` (384 dims) |
+| Code generation | OpenAI `gpt-4o` | Anthropic `claude-sonnet-4-6` |
 
-```bash
-python run_pipeline.py --input ./data/legacy_codebase/app.py --output ./data/upgraded_codebase/
-```
+**Important:** the embedding provider must be consistent between seeding and querying. If you seed with OpenAI embeddings and later run the pipeline without a working OpenAI key (falling back to local), Qdrant will reject the query due to a vector dimension mismatch. Re-run `seed_docs.py` any time you switch providers.
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology | Status |
-|-------|-----------|--------|
-| Orchestration | LangGraph | Planned |
-| Vector DB | Qdrant | Planned |
-| LLM | OpenAI GPT-4o / Anthropic Claude | Planned |
-| Static analysis | Python `ast` | **Active** |
-| Validation | pytest / subprocess | Planned |
-| Infra | Docker Compose | Configured |
+| Layer | Technology |
+|-------|-----------|
+| Orchestration | LangGraph |
+| Vector DB | Qdrant (local file storage, no server required) |
+| Embeddings | OpenAI `text-embedding-3-small` / `sentence-transformers` |
+| LLM | OpenAI GPT-4o / Anthropic Claude Sonnet |
+| Static analysis | Python `ast` module |
+| Validation | `py_compile` via subprocess |
 
 ---
 
 ## Roadmap
 
-### Near term
-- [x] Populate `requirements.txt` (LangGraph, qdrant-client, pytest, etc.)
-- [x] Add `.env.example` and Qdrant `docker-compose.yml`
-- [ ] Wire LangGraph state graph connecting all four agent nodes
-- [ ] Implement Qdrant vector store and retriever agent
-- [ ] Implement refactorer agent with LLM tool-calling
-- [ ] Implement validator agent with pytest closed loop
-- [ ] Add `run_pipeline.py` CLI and sample upgraded output
+### Completed
+- [x] AST parser with Flask and blocking I/O detection
+- [x] LangGraph state graph wiring all four agents
+- [x] Qdrant vector store with local file-based storage (no Docker required)
+- [x] Retriever agent with semantic search
+- [x] Refactorer agent with LLM code generation
+- [x] Validator agent with syntax check and retry loop
+- [x] OpenAI / local embedding fallback
+- [x] OpenAI / Anthropic LLM fallback
+- [x] Knowledge base seeding script
 
 ### Later
 - [ ] Multi-file dependency mapping (Neo4j GraphRAG)
@@ -221,18 +200,18 @@ python run_pipeline.py --input ./data/legacy_codebase/app.py --output ./data/upg
 
 ---
 
-## Evaluation *(planned)*
+## Evaluation
 
-When the full pipeline is operational, these benchmarks will track migration quality:
+These benchmarks will track migration quality as the system matures:
 
-- **Compilation & test pass rate** — Percentage of files that pass the validator loop without manual intervention (target: >88%).
-- **Ragas scores** — Context precision (retriever quality) and faithfulness (generated code vs. retrieved docs).
+- **Compilation & test pass rate** — Percentage of files that pass the validator loop without manual intervention (target: >88%)
+- **Ragas scores** — Context precision (retriever quality) and faithfulness (generated code vs. retrieved docs)
 
 ---
 
-## Sample Legacy Code
+## Sample Input / Output
 
-`data/legacy_codebase/app.py` is a minimal Flask app used to exercise the parser:
+**Input** (`data/legacy_codebase/app.py`):
 
 ```python
 import flask
@@ -240,10 +219,32 @@ import time
 
 app = flask.Flask(__name__)
 
-@app.route('/')
+@app.route('/', methods=["GET"])
 def index():
     time.sleep(2)
     return "Hello Legacy Flask Code!"
+
+@app.route("/process", methods=["GET"])
+def process_data():
+    time.sleep(2)
+    return "Data Processed Successfully"
 ```
 
-This file is the primary test fixture until the end-to-end pipeline is complete.
+**Output** (pipeline result):
+
+```python
+import asyncio
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+async def index() -> str:
+    await asyncio.sleep(2)
+    return "Hello Legacy Flask Code!"
+
+@app.get("/process")
+async def process_data() -> str:
+    await asyncio.sleep(2)
+    return "Data Processed Successfully"
+```
