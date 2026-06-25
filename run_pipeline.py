@@ -81,7 +81,7 @@ if __name__ == "__main__":
         "iteration_count": 0
     }
     
-    print("🚀 Initializing Multi-Agent Code Migration Orchestrator...")
+    print("Initializing Multi-Agent Code Migration Orchestrator...")
     app_graph = build_migration_graph()
     
     # Process code through execution graph
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     
     print("\n================== PIPELINE RUN COMPLETE ==================")
     if final_output_state.get("validation_errors"):
-        print("⚠️ System halted with unresolved validation bugs.")
+        print("System halted with unresolved validation bugs.")
     else:
-        print("✨ Modernized Async Python Output:")
+        print("Modernized Async Python Output:")
         print(final_output_state.get("refactored_code"))
