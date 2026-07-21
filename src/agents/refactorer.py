@@ -4,8 +4,9 @@ from src.agents.state import MigrationState
 
 def _call_openai(prompt: str) -> str:
     from openai import OpenAI
+    model = os.getenv("OPENAI_MODEL", os.getenv("LLM_MODEL", "gpt-4o"))
     response = OpenAI(api_key=os.getenv("OPENAI_API_KEY")).chat.completions.create(
-        model=os.getenv("LLM_MODEL", "gpt-4o"),
+        model=model,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.1
     )
@@ -14,8 +15,9 @@ def _call_openai(prompt: str) -> str:
 
 def _call_anthropic(prompt: str) -> str:
     import anthropic
+    model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
     response = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY")).messages.create(
-        model=os.getenv("LLM_MODEL", "claude-sonnet-4-6"),
+        model=model,
         max_tokens=4096,
         messages=[{"role": "user", "content": prompt}]
     )

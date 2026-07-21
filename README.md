@@ -50,7 +50,7 @@ flowchart LR
    - Flask lifecycle hooks (`@app.before_request`, `@app.after_request`, `@app.errorhandler`)
 2. **Retriever Agent** — Vectorizes each detected anti-pattern and runs semantic search against the Qdrant vector store to pull relevant migration documentation.
 3. **Refactorer Agent** — Combines AST metadata and retrieved docs into a structured prompt, then calls an LLM to produce refactored async code.
-4. **Validator Agent** — Writes the candidate code to a temp file and runs `python -m py_compile`. On failure, passes the error trace back into the graph for another refactoring attempt (max 3 iterations).
+4. **Validator Agent** — Two-stage check on the refactored output. Stage 1 runs `python -m py_compile` for syntax. Stage 2 runs an AST analysis that verifies: FastAPI is imported, Flask is removed, no `time.sleep()` or `requests.*()` calls remain, and all route handlers are declared `async def`. Any failure is passed back into the graph as a structured error for the next refactoring attempt (max 3 iterations).
 
 ---
 

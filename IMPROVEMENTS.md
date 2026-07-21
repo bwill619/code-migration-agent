@@ -16,7 +16,7 @@
 - [x] Respect `LLM_PROVIDER` env var in refactorer — setting `LLM_PROVIDER=anthropic` now routes directly to Anthropic without attempting OpenAI
 
 ## Tier 3: Validation Depth
-- [ ] Strengthen validator beyond `py_compile` — check that async/await patterns are present in output and that expected FastAPI imports exist
+- [x] Strengthen validator beyond `py_compile` — two-stage check: syntax (py_compile) then AST quality scan (FastAPI imported, Flask gone, no time.sleep/requests remaining, route handlers are async def)
 
 ## Tier 4: Roadmap
 - [ ] Multi-file support — handle projects with cross-file imports and shared models
