@@ -19,5 +19,5 @@
 - [x] Strengthen validator beyond `py_compile` — two-stage check: syntax (py_compile) then AST quality scan (FastAPI imported, Flask gone, no time.sleep/requests remaining, route handlers are async def)
 
 ## Tier 4: Roadmap
-- [ ] Multi-file support — handle projects with cross-file imports and shared models
-- [ ] Ragas evaluation — track retrieval precision and code faithfulness across a test suite
+- [x] Multi-file support — `--input` now accepts a directory; discovers all `.py` files and writes migrated output to a parallel directory structure via `--output`
+- [x] Evaluation reporting — `--report` writes a JSON report per run tracking patterns detected, docs retrieved, iterations, pass/fail per file, and aggregate pass rate and avg iterations
