@@ -64,10 +64,11 @@ code-migration-agent/
 │   │   ├── refactorer.py          # LLM code generation node
 │   │   └── validator.py           # Syntax validation node
 │   ├── database/
-│   │   └── vector_store.py        # Qdrant client wrapper
+│   │   └── vector_store.py        # Qdrant client wrapper (file-based, no server required)
 │   └── utils/
 │       ├── ast_helpers.py         # AST analyzer
 │       └── embeddings.py          # Embedding utility (OpenAI + local fallback)
+├── knowledge_base.json            # Migration rules loaded by seed_docs.py
 ├── seed_docs.py                   # One-time knowledge base seeding script
 ├── run_pipeline.py                # CLI entry point
 ├── docker-compose.yml             # Optional: run Qdrant as a container
@@ -136,20 +137,37 @@ Run once before the pipeline. Re-run any time you want to wipe and re-index.
 python seed_docs.py
 ```
 
-This embeds the migration rule documents into Qdrant. If OpenAI is unavailable or over quota, it automatically falls back to a local `sentence-transformers` model (`all-MiniLM-L6-v2`, 384 dims). The Qdrant collection is created with the correct vector dimensions for whichever provider is used.
+This loads rules from `knowledge_base.json`, embeds them, and upserts them into Qdrant. To add or edit migration rules, edit `knowledge_base.json` directly and re-run this script — no code changes required.
+
+If OpenAI is unavailable or over quota, it automatically falls back to a local `sentence-transformers` model (`all-MiniLM-L6-v2`, 384 dims). The Qdrant collection is created with the correct vector dimensions for whichever provider is used.
+
+To use a different knowledge base file:
+
+```bash
+KNOWLEDGE_BASE_PATH=my_rules.json python seed_docs.py
+```
 
 ### 5. Run the pipeline
 
 ```bash
+# Print migrated code to stdout
 python run_pipeline.py --input data/legacy_codebase/app.py
+
+# Write migrated code to a file
+python run_pipeline.py --input data/legacy_codebase/app.py --output data/upgraded_codebase/app.py
 ```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--input` | Yes | Path to the legacy Python file to migrate |
+| `--output` | No | Path to write the migrated file. Prints to stdout if omitted. |
 
 The pipeline will:
 1. Parse the input file for anti-patterns
 2. Query Qdrant for relevant migration docs per pattern
 3. Call the LLM to produce refactored async code
 4. Validate the output compiles cleanly
-5. Print the migrated code (or halt with error details after 3 failed attempts)
+5. Write the migrated code to `--output`, or print it if no output path is given (halts with error details after 3 failed attempts)
 
 ---
 

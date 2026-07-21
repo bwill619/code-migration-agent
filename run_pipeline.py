@@ -61,16 +61,16 @@ def build_migration_graph():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Autonomous Code Migration Multi-Agent RAG Pipeline.")
     parser.add_argument("--input", required=True, help="Path to the legacy Python code file.")
+    parser.add_argument("--output", required=False, help="Path to write the migrated output file. Prints to stdout if omitted.")
     args = parser.parse_args()
-    
+
     if not os.path.exists(args.input):
         print(f"File Error: Input source file path '{args.input}' could not be located.")
         exit(1)
-        
+
     with open(args.input, "r") as f:
         source_code_payload = f.read()
-        
-    # Construct clean entrypoint state dictionary
+
     initial_graph_state: MigrationState = {
         "file_path": args.input,
         "legacy_code": source_code_payload,
@@ -80,16 +80,22 @@ if __name__ == "__main__":
         "validation_errors": None,
         "iteration_count": 0
     }
-    
+
     print("Initializing Multi-Agent Code Migration Orchestrator...")
     app_graph = build_migration_graph()
-    
-    # Process code through execution graph
+
     final_output_state = app_graph.invoke(initial_graph_state)
-    
+
     print("\n================== PIPELINE RUN COMPLETE ==================")
     if final_output_state.get("validation_errors"):
         print("System halted with unresolved validation bugs.")
     else:
-        print("Modernized Async Python Output:")
-        print(final_output_state.get("refactored_code"))
+        refactored_code = final_output_state.get("refactored_code")
+        if args.output:
+            os.makedirs(os.path.dirname(args.output), exist_ok=True) if os.path.dirname(args.output) else None
+            with open(args.output, "w") as f:
+                f.write(refactored_code)
+            print(f"Migrated code written to: {args.output}")
+        else:
+            print("Modernized Async Python Output:")
+            print(refactored_code)
