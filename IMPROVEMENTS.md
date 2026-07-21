@@ -12,8 +12,8 @@
   - `requests.get/post/put/delete/patch()` sync HTTP calls
   - `jsonify()` usage
   - `@app.before_request`, `@app.after_request`, `@app.errorhandler` hooks
-- [ ] Expand `knowledge_base.json` with rules matching new parser patterns
-- [ ] Respect `LLM_PROVIDER` env var in refactorer (currently always tries OpenAI first)
+- [x] Expand `knowledge_base.json` with rules matching new parser patterns (8 rules total: Blueprint→APIRouter, requests→httpx, jsonify→Pydantic, lifecycle hooks, error handlers)
+- [x] Respect `LLM_PROVIDER` env var in refactorer — setting `LLM_PROVIDER=anthropic` now routes directly to Anthropic without attempting OpenAI
 
 ## Tier 3: Validation Depth
 - [ ] Strengthen validator beyond `py_compile` — check that async/await patterns are present in output and that expected FastAPI imports exist

@@ -145,6 +145,8 @@ python seed_docs.py
 
 This loads rules from `knowledge_base.json`, embeds them, and upserts them into Qdrant. To add or edit migration rules, edit `knowledge_base.json` directly and re-run this script — no code changes required.
 
+The knowledge base currently covers: Flask/FastAPI app initialization, `time.sleep` → `asyncio.sleep`, sync response patterns, Blueprint → APIRouter, `requests` → `httpx`, `jsonify` → Pydantic, lifecycle hooks (`before_request`/`after_request`), and error handlers.
+
 If OpenAI is unavailable or over quota, it automatically falls back to a local `sentence-transformers` model (`all-MiniLM-L6-v2`, 384 dims). The Qdrant collection is created with the correct vector dimensions for whichever provider is used.
 
 To use a different knowledge base file:
@@ -185,6 +187,8 @@ Both the embedding step (retriever) and the code generation step (refactorer) ar
 |------|---------|---------|
 | Embeddings | OpenAI `text-embedding-3-small` (1536 dims) | Local `all-MiniLM-L6-v2` (384 dims) |
 | Code generation | OpenAI `gpt-4o` | Anthropic `claude-sonnet-4-6` |
+
+Set `LLM_PROVIDER=anthropic` in `.env` to route code generation directly to Anthropic without attempting OpenAI first. Set `LLM_MODEL` to override the default model for the active provider.
 
 **Important:** the embedding provider must be consistent between seeding and querying. If you seed with OpenAI embeddings and later run the pipeline without a working OpenAI key (falling back to local), Qdrant will reject the query due to a vector dimension mismatch. Re-run `seed_docs.py` any time you switch providers.
 

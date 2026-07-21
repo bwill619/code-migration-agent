@@ -10,5 +10,25 @@
   {
     "id": 3,
     "text": "Flask returning strings or dictionaries implicitly sets the status code to 200. In FastAPI, structural responses are optimized using standard Pydantic schemas or type-hints. Synchronous requests functions (like requests.get) should be moved to an async client library like httpx."
+  },
+  {
+    "id": 4,
+    "text": "Flask's Blueprint is used to modularize routes into separate files: 'from flask import Blueprint; bp = Blueprint(\"name\", __name__)'. The FastAPI equivalent is APIRouter: 'from fastapi import APIRouter; router = APIRouter()'. Route decorators change from '@bp.route(\"/path\", methods=[\"GET\"])' to '@router.get(\"/path\")'. The router is registered on the app with 'app.include_router(router, prefix=\"/prefix\")'."
+  },
+  {
+    "id": 5,
+    "text": "Synchronous HTTP calls using the 'requests' library (requests.get, requests.post, requests.put, requests.delete, requests.patch) are blocking and incompatible with async FastAPI. Replace with 'httpx.AsyncClient': use 'async with httpx.AsyncClient() as client: response = await client.get(url)'. Add 'httpx' to your dependencies and remove 'requests'."
+  },
+  {
+    "id": 6,
+    "text": "Flask's 'jsonify()' function wraps dictionaries in a JSON response object. In FastAPI, returning a plain dict from an endpoint is sufficient — FastAPI serializes it automatically. For structured responses, define a Pydantic model: 'from pydantic import BaseModel; class ItemResponse(BaseModel): key: str' and use it as the endpoint return type annotation."
+  },
+  {
+    "id": 7,
+    "text": "Flask lifecycle hooks '@app.before_request' and '@app.after_request' run code before or after every request. In FastAPI, use middleware for cross-cutting logic: 'from fastapi import Request; @app.middleware(\"http\") async def my_middleware(request: Request, call_next): response = await call_next(request); return response'. For startup/shutdown logic, use the lifespan context manager instead of before_first_request."
+  },
+  {
+    "id": 8,
+    "text": "Flask error handlers use '@app.errorhandler(404)' or '@app.errorhandler(SomeException)' to return custom error responses. In FastAPI, register exception handlers with '@app.exception_handler(404)' or '@app.exception_handler(SomeException)'. The handler signature becomes 'async def handler(request: Request, exc: Exception)' and should return a 'JSONResponse' from 'fastapi.responses'."
   }
 ]
