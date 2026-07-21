@@ -2,7 +2,7 @@ import ast
 from typing import Any, Dict
 
 
-class LegacacyCodeAnalyzer(ast.NodeVisitor):
+class LegacyCodeAnalyzer(ast.NodeVisitor):
     def __init__(self):
         self.anti_patterns = []
         self.functions_found = []
@@ -11,9 +11,7 @@ class LegacacyCodeAnalyzer(ast.NodeVisitor):
         self._scan_function(node)
         self.generic_visit(node)
 
-    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
-        self._scan_function(node)
-        self.generic_visit(node)
+    visit_AsyncFunctionDef = visit_FunctionDef
 
     def _scan_function(self, node: ast.AST):
         """Scans individual functions for legacy patterns"""
@@ -45,7 +43,7 @@ def analyze_source_code(code_string: str) -> Dict[str, Any]:
     """Parses code text into an AST and extracts architectural features"""
     try:
         tree = ast.parse(code_string)
-        analyzer = LegacacyCodeAnalyzer()
+        analyzer = LegacyCodeAnalyzer()
         analyzer.visit(tree)
         return {
             "anti_patterns": analyzer.anti_patterns,
