@@ -1,4 +1,5 @@
 import os
+import json
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from dotenv import load_dotenv
@@ -9,6 +10,7 @@ from src.utils.embeddings import get_embedding
 
 QDRANT_URL = os.getenv("QDRANT_URL")
 COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "migration_docs")
+KNOWLEDGE_BASE_PATH = os.getenv("KNOWLEDGE_BASE_PATH", "knowledge_base.json")
 
 if QDRANT_URL == ":memory:":
     qdrant_client = QdrantClient(location=":memory:")
@@ -18,30 +20,20 @@ else:
     qdrant_client = QdrantClient(path=QDRANT_URL)
 
 
-MIGRATION_KNOWLEDGE_BASE = [
-    {
-        "id": 1,
-        "text": "Flask apps use 'from flask import Flask' and 'app = Flask(__name__)'. FastAPI applications must migrate to 'from fastapi import FastAPI' and use 'app = FastAPI()'. Routing changes from '@app.route(\"/path\", methods=[\"GET\"])' to direct async methods like '@app.get(\"/path\") async def endpoint():'."
-    },
-    {
-        "id": 2,
-        "text": "Legacy blocking operations like 'time.sleep(seconds)' halt the global application execution flow in sync systems. For modern high-concurrency FastAPI setups, migrate all instances of 'time.sleep(n)' to 'import asyncio' and use 'await asyncio.sleep(n)'. Ensure the surrounding function is declared with 'async def'."
-    },
-    {
-        "id": 3,
-        "text": "Flask returning strings or dictionaries implicitly sets the status code to 200. In FastAPI, structural responses are optimized using standard Pydantic schemas or type-hints. Synchronous requests functions (like requests.get) should be moved to an async client library like httpx."
-    }
-]
+def load_knowledge_base() -> list:
+    with open(KNOWLEDGE_BASE_PATH, "r") as f:
+        return json.load(f)
 
 def main():
     print(f"Connecting to Qdrant at: {QDRANT_URL}...")
+    knowledge_base = load_knowledge_base()
+    print(f"Loaded {len(knowledge_base)} rules from {KNOWLEDGE_BASE_PATH}")
 
     try:
-        # Embed all docs first so vector size is known before collection creation
         print("Generating embeddings...")
         points = []
         vector_size = None
-        for block in MIGRATION_KNOWLEDGE_BASE:
+        for block in knowledge_base:
             print(f"Vectorizing Migration Rule #{block['id']}...")
             vector = get_embedding(block["text"])
             if vector_size is None:

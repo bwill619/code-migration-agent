@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "text": "Flask apps use 'from flask import Flask' and 'app = Flask(__name__)'. FastAPI applications must migrate to 'from fastapi import FastAPI' and use 'app = FastAPI()'. Routing changes from '@app.route(\"/path\", methods=[\"GET\"])' to direct async methods like '@app.get(\"/path\") async def endpoint():'."
+  },
+  {
+    "id": 2,
+    "text": "Legacy blocking operations like 'time.sleep(seconds)' halt the global application execution flow in sync systems. For modern high-concurrency FastAPI setups, migrate all instances of 'time.sleep(n)' to 'import asyncio' and use 'await asyncio.sleep(n)'. Ensure the surrounding function is declared with 'async def'."
+  },
+  {
+    "id": 3,
+    "text": "Flask returning strings or dictionaries implicitly sets the status code to 200. In FastAPI, structural responses are optimized using standard Pydantic schemas or type-hints. Synchronous requests functions (like requests.get) should be moved to an async client library like httpx."
+  }
+]
