@@ -42,7 +42,12 @@ flowchart LR
 
 ### Agent Responsibilities
 
-1. **Parser Agent** — Walks the legacy source with Python's `ast` module. Detects migration-blocking patterns such as blocking `time.sleep()` calls and legacy Flask imports. Populates `MigrationState.detected_anti_patterns`.
+1. **Parser Agent** — Walks the legacy source with Python's `ast` module. Detects migration-blocking patterns and populates `MigrationState.detected_anti_patterns`. Detected patterns include:
+   - `import flask` / `from flask import ...` / `from flask import Blueprint`
+   - Blocking `time.sleep()` calls
+   - Synchronous `requests.get/post/put/delete/patch()` HTTP calls
+   - `jsonify()` usage
+   - Flask lifecycle hooks (`@app.before_request`, `@app.after_request`, `@app.errorhandler`)
 2. **Retriever Agent** — Vectorizes each detected anti-pattern and runs semantic search against the Qdrant vector store to pull relevant migration documentation.
 3. **Refactorer Agent** — Combines AST metadata and retrieved docs into a structured prompt, then calls an LLM to produce refactored async code.
 4. **Validator Agent** — Writes the candidate code to a temp file and runs `python -m py_compile`. On failure, passes the error trace back into the graph for another refactoring attempt (max 3 iterations).
@@ -68,6 +73,7 @@ code-migration-agent/
 │   └── utils/
 │       ├── ast_helpers.py         # AST analyzer
 │       └── embeddings.py          # Embedding utility (OpenAI + local fallback)
+├── IMPROVEMENTS.md                # Tracked improvement checklist
 ├── knowledge_base.json            # Migration rules loaded by seed_docs.py
 ├── seed_docs.py                   # One-time knowledge base seeding script
 ├── run_pipeline.py                # CLI entry point
