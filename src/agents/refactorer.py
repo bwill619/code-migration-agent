@@ -2,18 +2,41 @@ import os
 from src.agents.state import MigrationState
 
 
+def _call_openai(prompt: str) -> str:
+    from openai import OpenAI
+    response = OpenAI(api_key=os.getenv("OPENAI_API_KEY")).chat.completions.create(
+        model=os.getenv("LLM_MODEL", "gpt-4o"),
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.1
+    )
+    return response.choices[0].message.content
+
+
+def _call_anthropic(prompt: str) -> str:
+    import anthropic
+    response = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY")).messages.create(
+        model=os.getenv("LLM_MODEL", "claude-sonnet-4-6"),
+        max_tokens=4096,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return response.content[0].text
+
+
 def _call_llm(prompt: str) -> str:
-    """Tries OpenAI gpt-4o first; falls back to Anthropic claude if key unavailable."""
+    """Routes to the configured LLM provider, falling back to the other if the primary is unavailable."""
+    provider = os.getenv("LLM_PROVIDER", "openai").lower()
+
+    if provider == "anthropic":
+        anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+        if not anthropic_key:
+            raise RuntimeError("LLM_PROVIDER=anthropic but ANTHROPIC_API_KEY is not set.")
+        return _call_anthropic(prompt)
+
+    # Default: openai with fallback to anthropic
     openai_key = os.getenv("OPENAI_API_KEY")
     if openai_key:
         try:
-            from openai import OpenAI
-            response = OpenAI(api_key=openai_key).chat.completions.create(
-                model=os.getenv("LLM_MODEL", "gpt-4o"),
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.1
-            )
-            return response.choices[0].message.content
+            return _call_openai(prompt)
         except Exception as e:
             if any(code in str(e) for code in ("insufficient_quota", "invalid_api_key", "429", "401")):
                 print("[REFACTORER] OpenAI key unavailable, falling back to Anthropic.")
@@ -22,13 +45,7 @@ def _call_llm(prompt: str) -> str:
 
     anthropic_key = os.getenv("ANTHROPIC_API_KEY")
     if anthropic_key:
-        import anthropic
-        response = anthropic.Anthropic(api_key=anthropic_key).messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=4096,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return response.content[0].text
+        return _call_anthropic(prompt)
 
     raise RuntimeError("No LLM provider available. Set OPENAI_API_KEY or ANTHROPIC_API_KEY in .env.")
 
